@@ -52,6 +52,7 @@ Mkfile.old
 dkms.conf
 
 # build
+robtk/
 build/
 bin/
 robtk/
