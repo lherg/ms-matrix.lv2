@@ -30,11 +30,11 @@ make install
 ```
 Run<bg/>
 ```
-jalv.gtk http://github.com/lherg/lv2/eg-amp-fgain-ano
+jalv.gtk https://github.com/lherg/ms_matrix.lv2
 ```
 
+Or the jack client<bg/>
 ```
-or the jack client<bg/>
 bin/x42-ms_matrix
 ```
 
