@@ -1,0 +1,13 @@
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
+
+<https://github.com/lherg/ms_matrix.lv2>
+	a lv2:Plugin ;
+	lv2:binary <ms_matrix.so> ;
+	rdfs:seeAlso <ms_matrix.ttl> .
+
+<https://github.com/lherg/ms_matrix.lv2ui_gl>
+	a ui:X11UI ;
+	ui:binary <ms_matrixUI_gl.so> ;
+	rdfs:seeAlso <ms_matrix.ttl> .
