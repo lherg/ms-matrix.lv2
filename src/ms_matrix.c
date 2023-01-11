@@ -8,8 +8,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "ms_matrix.h"
+
+typedef struct {
+  float rate;
+  float freq;
+
+  float B0, B1, B2, A0, A1, A2;
+  float b0, b1, b2, a0, a1, a2;
+  float x1, x2, y1, y2;
+
+} Filter;
 
 typedef struct {
   // Port buffers
@@ -34,7 +45,57 @@ typedef struct {
 
 	uint32_t rms_sample_count;
 	uint32_t rms_sample_max;
+	Filter mhip;
+	Filter ship;  
+    
 } Amp;
+
+static void hip_setup (Filter *hip, float rate, float freq) {
+  memset (hip, 0, sizeof(Filter));
+	hip->rate = rate;
+	hip->freq = freq;
+
+	float wc = 2 * M_PI * freq; // (rad / s)
+
+  hip->A0 = 0;
+  hip->A1 = 1 / wc;
+  hip->A2 = 1; 
+  hip->B0 = 0;
+  hip->B1 = 1 / wc;
+  hip->B2 = 0;  
+
+  hip->a0 = (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate) / (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate);
+  hip->a1 = (2 * hip->A2 - 8 *  hip->A0 * rate *rate) / (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate);
+  hip->a2 = (hip->A2 - 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate) / (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate);
+  hip->b0 = (hip->B2 + 2 * hip->B1 *rate + 4 * hip->B0 * rate *rate) / (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate);
+  hip->b1 = (2 * hip->B2 - 8 *  hip->B0 * rate *rate) / (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate);
+  hip->b2 = (hip->B2 - 2 * hip->B1 *rate + 4 * hip->B0 * rate *rate) / (hip->A2 + 2 * hip->A1 *rate + 4 * hip->A0 * rate *rate);  
+
+  hip->x1 = 0.f;
+  hip->x2 = 0.f; 
+  hip->y1 = 0.f;
+  hip->y2 = 0.f;   
+}
+
+static void hip_compute (Filter *hip, uint32_t n_samples, float *buf) {
+  
+  float x, y;
+  
+  for (uint32_t i = 0; i < n_samples; ++i)
+  {
+    x = buf[i];
+    y = hip->b0 * x + hip->b1 * hip->x1 + hip->b2 * hip->x2 - hip->a1 * hip->y1 - hip->a2 * hip->y2 ;
+
+    hip->y2 = hip->y1;   
+    hip->y1 = y;  
+    hip->x2 = hip->x1;   
+    hip->x1 = x;    
+
+    buf [i] = y;
+  
+  } 
+}
+
 
 static LV2_Handle
 instantiate(const LV2_Descriptor*     descriptor,
@@ -46,7 +107,7 @@ instantiate(const LV2_Descriptor*     descriptor,
 
   amp->sample_rate = rate;
   amp->rms_time = 0.3f;
-  amp->rms_sample_max = ceilf(rate * 0.05f); //?? TODO ms
+  amp->rms_sample_max = ceilf(rate * 0.05f); //50 ms
 
   amp->rms_sample_count = 0; 
 
@@ -65,6 +126,8 @@ instantiate(const LV2_Descriptor*     descriptor,
   amp->rmsout0 = 0;  
   amp->rmsout1 = 0;  
 
+  hip_setup (&amp->mhip, rate, 80);
+  hip_setup (&amp->ship, rate, 80);  
   return (LV2_Handle)amp;
 }
 
@@ -115,9 +178,8 @@ run(LV2_Handle instance, uint32_t n_samples)
   if (mmute) mcoef = 0;
   if (smute) scoef = 0;
 
-  //fprintf(stderr, "LV2|mswap: %d\n", swap);  
-  //fprintf(stderr, "LV2|mmute: %d\n", mmute);
-  //fprintf(stderr, "LV2|smute: %d\n", smute);
+	if (mhpf) hip_compute (&amp->mhip, n_samples, ins[0]);
+	if (shpf) hip_compute (&amp->ship, n_samples, ins[1]);
 
   for (uint32_t pos = 0; pos < n_samples; pos++) {
     outs[0][pos] = swap ? ins[1][pos] * mcoef + ins[0][pos] * scoef : ins[0][pos] * mcoef + ins[1][pos] * scoef;

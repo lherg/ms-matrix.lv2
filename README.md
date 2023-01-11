@@ -5,7 +5,7 @@ A mid-sid encoder with DbFS peak and rms meters.<bg/>
 Based on the (great) work of Robin Gareus: https://github.com/x42/x42-plugins<br/>
 ![alt text](https://github.com/lherg/ms-matrix.lv2/blob/main/png/ms-matrix.png)<br/>
 
-The high pass filter is not yet implemented, but will be soon...<bg/>
+The high pass filter is a first order IIR filter with a cutoff frequency of 80 Hz.<bg/>
 
 It can also decode:<bg/>
 
